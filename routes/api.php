@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductPhotoController;
 use App\Http\Controllers\Api\PublicController;
+use App\Http\Controllers\Api\FileUploadController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -60,4 +61,10 @@ Route::prefix('admin')->group(function () {
     
     // Product photo management
     Route::apiResource('product-photos', ProductPhotoController::class);
+    
+    // File upload routes
+    Route::post('brands/{brand}/upload-image', [FileUploadController::class, 'uploadBrandImage']);
+    Route::delete('brands/{brand}/delete-image', [FileUploadController::class, 'deleteBrandImage']);
+    Route::post('products/{product}/upload-photo', [FileUploadController::class, 'uploadProductPhoto']);
+    Route::delete('product-photos/{productPhoto}/delete-photo', [FileUploadController::class, 'deleteProductPhoto']);
 });

@@ -7,6 +7,7 @@ API RESTful para gestionar un catálogo de productos con marcas y fotos, desarro
 - **CRUD completo** para Marcas, Productos y Fotos de Productos
 - **API Pública** para consumo externo (solo contenido activo)
 - **API de Administración** para gestión completa
+- **Subida de archivos** para imágenes de marcas y productos
 - **Validación robusta** con Form Requests personalizados
 - **Recursos API** para formateo consistente de respuestas
 - **Relaciones Eloquent** optimizadas
@@ -34,6 +35,7 @@ API RESTful para gestionar un catálogo de productos con marcas y fotos, desarro
 ### Product Photos (Fotos de Productos)
 - `id` - ID único
 - `product_id` - FK a products
+- `path` - Ruta del archivo de imagen
 - `description` - Descripción de la foto (opcional)
 - `created_at`, `updated_at` - Timestamps
 
@@ -82,9 +84,72 @@ Endpoints para gestión completa del catálogo (requiere autenticación).
 - `PUT /api/admin/product-photos/{id}` - Actualizar foto
 - `DELETE /api/admin/product-photos/{id}` - Eliminar foto
 
+#### Subida de Archivos
+- `POST /api/admin/brands/{id}/upload-image` - Subir imagen de marca
+- `DELETE /api/admin/brands/{id}/delete-image` - Eliminar imagen de marca
+- `POST /api/admin/products/{id}/upload-photo` - Subir foto de producto
+- `DELETE /api/admin/product-photos/{id}/delete-photo` - Eliminar foto de producto
+
 **Parámetros de consulta adicionales para admin:**
 - `active` - Filtrar por estado activo/inactivo (productos)
 - `product_id` - Filtrar por producto (fotos)
+
+## Subida de Archivos
+
+### Configuración
+- **Tamaño máximo:** 2MB por archivo
+- **Formatos soportados:** JPEG, PNG, JPG, GIF, WebP
+- **Almacenamiento:** Local en `storage/app/public/`
+- **Acceso público:** A través de `/storage/`
+
+### Subir imagen de marca
+```bash
+POST /api/admin/brands/{id}/upload-image
+Content-Type: multipart/form-data
+
+# Formulario
+image: [archivo de imagen]
+```
+
+**Respuesta exitosa:**
+```json
+{
+    "message": "Imagen de marca subida exitosamente.",
+    "data": {
+        "path": "brands/1704422400_abcd123456.jpg",
+        "url": "http://localhost:8000/storage/brands/1704422400_abcd123456.jpg"
+    }
+}
+```
+
+### Subir foto de producto
+```bash
+POST /api/admin/products/{id}/upload-photo
+Content-Type: multipart/form-data
+
+# Formulario
+image: [archivo de imagen]
+description: [descripción opcional]
+```
+
+**Respuesta exitosa:**
+```json
+{
+    "message": "Foto de producto subida exitosamente.",
+    "data": {
+        "id": 1,
+        "path": "products/1704422400_xyz789.jpg",
+        "url": "http://localhost:8000/storage/products/1704422400_xyz789.jpg",
+        "description": "Vista frontal del producto"
+    }
+}
+```
+
+### Eliminar archivos
+```bash
+DELETE /api/admin/brands/{id}/delete-image
+DELETE /api/admin/product-photos/{id}/delete-photo
+```
 
 ## Ejemplos de Uso
 
@@ -100,9 +165,16 @@ Content-Type: application/json
 
 {
     "name": "Nueva Marca",
-    "description": "Descripción de la marca",
-    "foto_path": "brands/nueva-marca.jpg"
+    "description": "Descripción de la marca"
 }
+```
+
+### Subir imagen a marca existente
+```bash
+POST /api/admin/brands/1/upload-image
+Content-Type: multipart/form-data
+
+# Archivo en campo 'image'
 ```
 
 ### Crear un nuevo producto (admin)
@@ -116,6 +188,15 @@ Content-Type: application/json
     "description": "Descripción del producto",
     "active": true
 }
+```
+
+### Subir foto a producto existente
+```bash
+POST /api/admin/products/1/upload-photo
+Content-Type: multipart/form-data
+
+# Archivo en campo 'image'
+# description: "Foto principal del producto"
 ```
 
 ## Formato de Respuestas
@@ -141,13 +222,22 @@ Content-Type: application/json
 }
 ```
 
-### Respuesta de error
+### Respuesta de error de validación
 ```json
 {
     "message": "Error de validación.",
     "errors": {
-        "name": ["El nombre es obligatorio."]
+        "name": ["El nombre es obligatorio."],
+        "image": ["El archivo debe ser una imagen válida."]
     }
+}
+```
+
+### Respuesta de error de subida
+```json
+{
+    "message": "Error al subir la imagen.",
+    "error": "El archivo excede el tamaño máximo permitido."
 }
 ```
 
@@ -166,15 +256,147 @@ Content-Type: application/json
 
 ### Fotos de Productos
 - `product_id`: requerido, debe existir en la tabla products
+- `path`: generado automáticamente en subida
 - `description`: opcional, máximo 500 caracteres
+
+### Archivos de Imagen
+- `image`: requerido para subida
+- **Tipos MIME permitidos:** image/jpeg, image/png, image/jpg, image/gif, image/webp
+- **Tamaño máximo:** 2048 KB (2MB)
+- **Nombres de archivo:** Se generan automáticamente con timestamp + string aleatorio
+
+## Respuestas de API Resources
+
+### BrandResource
+```json
+{
+    "id": 1,
+    "name": "Apple",
+    "description": "Empresa multinacional...",
+    "foto_path": "brands/apple_logo.jpg",
+    "image_url": "http://localhost:8000/storage/brands/apple_logo.jpg",
+    "created_at": "2025-01-01 12:00:00",
+    "updated_at": "2025-01-01 12:00:00",
+    "products_count": 5
+}
+```
+
+### ProductResource
+```json
+{
+    "id": 1,
+    "brand_id": 1,
+    "name": "iPhone 15 Pro",
+    "description": "El smartphone más avanzado...",
+    "active": true,
+    "created_at": "2025-01-01 12:00:00",
+    "updated_at": "2025-01-01 12:00:00",
+    "photos_count": 3,
+    "brand": { /* BrandResource */ }
+}
+```
+
+### ProductPhotoResource
+```json
+{
+    "id": 1,
+    "product_id": 1,
+    "path": "products/iphone_front.jpg",
+    "image_url": "http://localhost:8000/storage/products/iphone_front.jpg",
+    "description": "Vista frontal del iPhone",
+    "created_at": "2025-01-01 12:00:00",
+    "updated_at": "2025-01-01 12:00:00"
+}
+```
+
+## Frontend Vue 3 + TypeScript
+
+### Características del Frontend
+- **Vue 3** con Composition API
+- **TypeScript** para tipado seguro
+- **Pinia** para gestión de estado
+- **Vue Router** para navegación
+- **Tailwind CSS** para estilos
+- **Componente FileUpload** para subida de archivos
+- **Validación de archivos** en tiempo real
+- **Preview de imágenes** antes de subir
+- **Drag & Drop** para archivos
+
+### Páginas Disponibles
+- **Home** (`/`) - Página principal con productos destacados
+- **Marcas** (`/brands`) - Listado de marcas con filtros
+- **Productos** (`/products`) - Catálogo de productos con búsqueda
+- **Detalle de Marca** (`/brands/{id}`) - Productos de una marca específica
+- **Detalle de Producto** (`/products/{id}`) - Información completa del producto
+- **Admin** (`/admin`) - Panel de administración completo
+
+### Funcionalidades de Subida en Frontend
+- **Drag & Drop** de archivos sobre zona de subida
+- **Preview inmediato** de imágenes seleccionadas
+- **Validación de tipo y tamaño** antes de enviar
+- **Indicadores de progreso** durante la subida
+- **Manejo de errores** con mensajes claros
+- **Integración con stores** para actualización automática
 
 ## Instalación y Configuración
 
 1. Clonar el repositorio
-2. Instalar dependencias: `composer install`
-3. Configurar base de datos en `.env`
-4. Ejecutar migraciones con datos de prueba: `php artisan migrate:fresh --seed`
-5. Iniciar servidor: `php artisan serve`
+2. Instalar dependencias PHP: `composer install`
+3. Instalar dependencias Node.js: `npm install`
+4. Configurar base de datos en `.env`
+5. Ejecutar migraciones con datos de prueba: `php artisan migrate:fresh --seed`
+6. Crear enlace simbólico de storage: `php artisan storage:link`
+7. Compilar assets: `npm run build`
+8. Iniciar servidor: `php artisan serve`
+
+## Estructura de Archivos
+
+### Backend (Laravel)
+```
+app/
+├── Http/
+│   ├── Controllers/Api/
+│   │   ├── BrandController.php
+│   │   ├── ProductController.php
+│   │   ├── ProductPhotoController.php
+│   │   ├── PublicController.php
+│   │   └── FileUploadController.php
+│   ├── Requests/
+│   └── Resources/
+├── Models/
+│   ├── Brand.php
+│   ├── Product.php
+│   └── ProductPhoto.php
+```
+
+### Frontend (Vue 3 + TypeScript)
+```
+resources/js/
+├── components/
+│   └── FileUpload.vue
+├── pages/
+│   ├── Home.vue
+│   ├── Brands.vue
+│   ├── Products.vue
+│   ├── BrandDetail.vue
+│   ├── ProductDetail.vue
+│   └── Admin.vue
+├── stores/
+│   ├── brands.ts
+│   ├── products.ts
+│   └── admin.ts
+├── services/
+│   └── api.ts
+└── types/
+    └── index.ts
+```
+
+### Storage
+```
+storage/app/public/
+├── brands/        # Imágenes de marcas
+└── products/      # Fotos de productos
+```
 
 ## Datos de Prueba
 
@@ -182,8 +404,18 @@ El sistema incluye seeders con datos de marcas conocidas (Apple, Samsung, Sony, 
 
 ## Tecnologías Utilizadas
 
+### Backend
 - **Laravel 11** - Framework PHP
 - **Eloquent ORM** - Para manejo de base de datos
 - **Form Requests** - Para validación
 - **API Resources** - Para formateo de respuestas
-- **Route Model Binding** - Para resolución automática de modelos
+- **Storage Facade** - Para manejo de archivos
+
+### Frontend
+- **Vue 3** - Framework JavaScript con Composition API
+- **TypeScript** - Tipado estático
+- **Pinia** - Gestión de estado reactivo
+- **Vue Router** - Enrutamiento SPA
+- **Tailwind CSS** - Framework de estilos utilitarios
+- **Vite** - Bundler y herramientas de desarrollo
+- **Axios** - Cliente HTTP para API calls
