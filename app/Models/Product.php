@@ -13,6 +13,7 @@ class Product extends Model
         'brand_id',
         'name',
         'description',
+        'characteristics',
         'active',
     ];
 
@@ -35,7 +36,47 @@ class Product extends Model
      */
     public function photos()
     {
-        return $this->hasMany(ProductPhoto::class, 'product_id');
+        return $this->hasMany(ProductPhoto::class, 'product_id')->ordered();
+    }
+
+    /**
+     * Get the primary photo for the product.
+     */
+    public function primaryPhoto()
+    {
+        return $this->hasOne(ProductPhoto::class, 'product_id')->where('is_primary', true);
+    }
+
+    /**
+     * Get the primary photo URL or first photo URL.
+     */
+    public function getMainPhotoUrlAttribute()
+    {
+        $primaryPhoto = $this->primaryPhoto;
+        if ($primaryPhoto) {
+            return $primaryPhoto->image_url;
+        }
+        
+        $firstPhoto = $this->photos()->first();
+        return $firstPhoto ? $firstPhoto->image_url : null;
+    }
+
+    /**
+     * Ensure the product has a primary photo (sets first photo as primary if none exists).
+     */
+    public function ensurePrimaryPhoto()
+    {
+        $hasPrimary = $this->photos()->where('is_primary', true)->exists();
+        
+        if (!$hasPrimary) {
+            $firstPhoto = $this->photos()->orderBy('position', 'asc')->first();
+            if ($firstPhoto) {
+                $firstPhoto->update(['is_primary' => true]);
+                return $firstPhoto;
+            }
+        }
+        
+        return $this->primaryPhoto;
     }
 
     /**
