@@ -15,29 +15,14 @@ class BrandSeeder extends Seeder
     {
         $brands = [
             [
-                'name' => 'Apple',
-                'description' => 'Empresa multinacional estadounidense que diseña y produce equipos electrónicos, software y servicios en línea.',
-                'foto_path' => 'brands/apple.jpg',
+                'name' => 'ATLANTIC',
+                'description' => 'Atlantic es un fabricante francés líder en soluciones de confort térmico desde 1968. Especialista en sistemas de calefacción, producción de agua caliente sanitaria, climatización y ventilación VMC. Con más de 50 años de experiencia, 5000 colaboradores y 13 fábricas en Francia, Atlantic desarrolla radiadores eléctricos, bombas de calor, calderas de gas, calentadores de agua y sistemas de ventilación para mejorar el confort del hogar y la eficiencia energética.',
+                'foto_path' => 'brands/atlantic.jpg',
             ],
             [
-                'name' => 'Samsung',
-                'description' => 'Conglomerado surcoreano de empresas multinacionales con sede en Samsung Town, Seúl.',
-                'foto_path' => 'brands/samsung.jpg',
-            ],
-            [
-                'name' => 'Sony',
-                'description' => 'Corporación multinacional japonesa con sede en Minato, Tokio, conocida por sus productos electrónicos.',
-                'foto_path' => 'brands/sony.jpg',
-            ],
-            [
-                'name' => 'LG',
-                'description' => 'Conglomerado surcoreano de empresas multinacionales que opera en todo el mundo.',
-                'foto_path' => 'brands/lg.jpg',
-            ],
-            [
-                'name' => 'Microsoft',
-                'description' => 'Corporación multinacional de tecnología estadounidense con sede en Redmond, Washington.',
-                'foto_path' => 'brands/microsoft.jpg',
+                'name' => 'KNAUF',
+                'description' => 'Knauf es un grupo familiar alemán líder mundial en materiales de construcción con más de 90 años de experiencia. Especialista en soluciones de aislamiento térmico y acústico, placas de yeso, paneles de poliestireno expandido, poliuretano y lana de madera. Con presencia en más de 90 países, 85 plantas de procesamiento y 320 sitios de producción, Knauf ofrece materiales de alta calidad para suelos, techos, paredes, tejados y fachadas, enfocándose en resistencia al fuego, eficiencia energética y sostenibilidad.',
+                'foto_path' => 'brands/knauf.jpg',
             ],
         ];
 
