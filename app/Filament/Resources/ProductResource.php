@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductResource\Pages;
 use App\Filament\Resources\ProductResource\RelationManagers;
+use App\Forms\Components\BrandSelect;
 use App\Models\Product;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -15,17 +16,22 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ProductResource extends Resource
 {
+
+    
+    protected static ?string $navigationGroup = 'Catálogos';
+
+    protected static ?string $navigationLabel = 'Productos';
+
     protected static ?string $model = Product::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-tag';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('brand_id')
-                    ->required()
-                    ->numeric(),
+                BrandSelect::make(),
+                
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
