@@ -1,21 +1,32 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <header class="bg-white shadow-sm border-b border-gray-200">
-      <div class="container mx-auto px-4 py-4">
-        <div class="flex items-center justify-between">
-          <h1 class="text-2xl font-bold text-gray-900">Panel de Administración</h1>
-          <router-link 
-            to="/"
-            class="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            ← Volver al sitio
-          </router-link>
+  <Layout>
+    <div class="min-h-screen bg-gray-50">
+      <!-- Admin Header -->
+      <div class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+              <p class="text-gray-600 mt-1">Manage your store's products and brands</p>
+            </div>
+            <div class="flex items-center space-x-4">
+              <div class="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg">
+                <i class="fas fa-user-shield mr-2"></i>
+                Administrator
+              </div>
+              <router-link 
+                to="/"
+                class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                <i class="fas fa-arrow-left mr-2"></i>
+                Back to Store
+              </router-link>
+            </div>
+          </div>
         </div>
       </div>
-    </header>
 
-    <div class="container mx-auto px-4 py-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Navigation Tabs -->
       <div class="mb-8">
         <nav class="flex space-x-8">
@@ -455,11 +466,13 @@
         </form>
       </div>
     </div>
-  </div>
+    </div>
+  </Layout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import Layout from '@/components/layout/Layout.vue'
 import { useBrandsStore } from '@/stores/brands'
 import { useProductsStore } from '@/stores/products'
 import { useAdminStore } from '@/stores/admin'

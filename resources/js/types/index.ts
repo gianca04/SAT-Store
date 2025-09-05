@@ -22,6 +22,38 @@ export interface Product {
   photos_count?: number
   brand?: Brand
   photos?: ProductPhoto[]
+  // Ecommerce visual properties (optional)
+  price?: number
+  discount?: number
+  stock?: number
+  rating?: number
+  reviews_count?: number
+  is_new?: boolean
+  is_featured?: boolean
+  image_url?: string
+}
+
+// Type for display/visual products (used in UI components)
+export interface DisplayProduct {
+  id: number
+  name: string
+  brand?: { name: string }
+  price?: number
+  discount?: number
+  stock?: number
+  rating?: number
+  reviews_count?: number
+  is_new?: boolean
+  is_featured?: boolean
+  image_url?: string
+  // Optional backend properties
+  brand_id?: number
+  description?: string | null
+  active?: boolean
+  created_at?: string
+  updated_at?: string
+  photos_count?: number
+  photos?: ProductPhoto[]
 }
 
 export interface ProductPhoto {
