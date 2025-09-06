@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Gallery API</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+</head>
+<body>
+    <h1>Test API de Galería</h1>
+    
+    <div id="test-results"></div>
+    
+    <button onclick="testAuthentication()">1. Test Authentication</button>
+    <button onclick="testLoadPhotos()">2. Load Photos</button>
+    <button onclick="testDeletePhoto()">3. Test Delete Photo</button>
+    
+    <script>
+        let authToken = null;
+        const productId = 1; // Cambiar por un ID de producto existente
+        
+        function log(message) {
+            const div = document.getElementById('test-results');
+            div.innerHTML += '<p>' + new Date().toLocaleTimeString() + ': ' + message + '</p>';
+            console.log(message);
+        }
+        
+        async function testAuthentication() {
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'sistemas@sat-industriales.pe',
+                        password: '2004Febrero.'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    authToken = data.data.token;
+                    log('✅ Autenticación exitosa. Token: ' + authToken.substring(0, 20) + '...');
+                } else {
+                    log('❌ Error de autenticación: ' + data.message);
+                }
+            } catch (error) {
+                log('❌ Error: ' + error.message);
+            }
+        }
+        
+        async function testLoadPhotos() {
+            if (!authToken) {
+                log('❌ Necesitas autenticarte primero');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/products/${productId}/photos`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                log('📷 Fotos cargadas: ' + JSON.stringify(data, null, 2));
+            } catch (error) {
+                log('❌ Error cargando fotos: ' + error.message);
+            }
+        }
+        
+        async function testDeletePhoto() {
+            if (!authToken) {
+                log('❌ Necesitas autenticarte primero');
+                return;
+            }
+            
+            // Primero obtener las fotos para tener un ID válido
+            try {
+                const response = await fetch(`/api/admin/products/${productId}/photos`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.data && data.data.length > 0) {
+                    const photoId = data.data[0].id;
+                    log('🔄 Intentando eliminar foto ID: ' + photoId);
+                    
+                    const deleteResponse = await fetch(`/api/admin/products/${productId}/photos/${photoId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+                    
+                    const deleteData = await deleteResponse.json();
+                    log('🗑️ Resultado eliminación: ' + JSON.stringify(deleteData, null, 2));
+                } else {
+                    log('❌ No hay fotos para eliminar');
+                }
+            } catch (error) {
+                log('❌ Error en test de eliminación: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

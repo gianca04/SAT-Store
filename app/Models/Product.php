@@ -86,4 +86,10 @@ class Product extends Model
     {
         return $query->where('active', true);
     }
+
+    public function categories()
+    {
+        return $this->belongsToMany(Category::class);
+    }
 }
+

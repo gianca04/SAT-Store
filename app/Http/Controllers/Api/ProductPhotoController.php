@@ -217,10 +217,10 @@ class ProductPhotoController extends Controller
     /**
      * Set a photo as primary
      */
-    public function setPrimary(Request $request, Product $product, ProductPhoto $photo): JsonResponse
+    public function setPrimary(Request $request, Product $product, ProductPhoto $productPhoto): JsonResponse
     {
         try {
-            if ($photo->product_id !== $product->id) {
+            if ($productPhoto->product_id !== $product->id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Foto no encontrada'
@@ -231,18 +231,18 @@ class ProductPhotoController extends Controller
             $product->photos()->update(['is_primary' => false]);
             
             // Set this photo as primary
-            $photo->update(['is_primary' => true]);
+            $productPhoto->update(['is_primary' => true]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Foto principal actualizada',
                 'data' => [
-                    'id' => $photo->id,
-                    'path' => $photo->path,
-                    'image_url' => $photo->image_url,
-                    'description' => $photo->description,
+                    'id' => $productPhoto->id,
+                    'path' => $productPhoto->path,
+                    'image_url' => $productPhoto->image_url,
+                    'description' => $productPhoto->description,
                     'is_primary' => true,
-                    'position' => $photo->position,
+                    'position' => $productPhoto->position,
                 ]
             ]);
 
@@ -284,58 +284,50 @@ class ProductPhotoController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Request $request, Product $product = null, ProductPhoto $productPhoto = null): JsonResponse
+    public function destroy(Product $product, ProductPhoto $productPhoto): JsonResponse
     {
         try {
-            // If called from gallery route (with product parameter)
-            if ($product && $productPhoto) {
-                if ($productPhoto->product_id !== $product->id) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Foto no encontrada'
-                    ], 404);
-                }
-
-                // Delete file from storage
-                if (Storage::disk('public')->exists($productPhoto->path)) {
-                    Storage::disk('public')->delete($productPhoto->path);
-                }
-
-                // If this was the primary photo, promote the next one
-                $wasPrimary = $productPhoto->is_primary;
-                $productPhoto->delete();
-
-                $newPrimary = null;
-                if ($wasPrimary) {
-                    $nextPrimary = $product->photos()->orderBy('position')->first();
-                    if ($nextPrimary) {
-                        $nextPrimary->update(['is_primary' => true]);
-                        $newPrimary = [
-                            'id' => $nextPrimary->id,
-                            'path' => $nextPrimary->path,
-                            'image_url' => $nextPrimary->image_url,
-                            'description' => $nextPrimary->description,
-                            'is_primary' => true,
-                            'position' => $nextPrimary->position,
-                        ];
-                    }
-                }
-
+            // Verify the photo belongs to the product
+            if ($productPhoto->product_id !== $product->id) {
                 return response()->json([
-                    'success' => true,
-                    'message' => 'Foto eliminada correctamente',
-                    'data' => [
-                        'deleted_photo_id' => $productPhoto->id,
-                        'new_primary' => $newPrimary
-                    ]
-                ]);
+                    'success' => false,
+                    'message' => 'Foto no encontrada'
+                ], 404);
             }
 
-            // Generic delete for admin (existing logic)
+            // Delete file from storage
+            if (Storage::disk('public')->exists($productPhoto->path)) {
+                Storage::disk('public')->delete($productPhoto->path);
+            }
+
+            // If this was the primary photo, promote the next one
+            $wasPrimary = $productPhoto->is_primary;
+            $deletedPhotoId = $productPhoto->id;
             $productPhoto->delete();
-            
+
+            $newPrimary = null;
+            if ($wasPrimary) {
+                $nextPrimary = $product->photos()->orderBy('position')->first();
+                if ($nextPrimary) {
+                    $nextPrimary->update(['is_primary' => true]);
+                    $newPrimary = [
+                        'id' => $nextPrimary->id,
+                        'path' => $nextPrimary->path,
+                        'image_url' => $nextPrimary->image_url,
+                        'description' => $nextPrimary->description,
+                        'is_primary' => true,
+                        'position' => $nextPrimary->position,
+                    ];
+                }
+            }
+
             return response()->json([
-                'message' => 'Foto del producto eliminada exitosamente.'
+                'success' => true,
+                'message' => 'Foto eliminada correctamente',
+                'data' => [
+                    'deleted_photo_id' => $deletedPhotoId,
+                    'new_primary' => $newPrimary
+                ]
             ]);
 
         } catch (\Exception $e) {

@@ -94,8 +94,8 @@ Route::prefix('admin')->middleware('auth:sanctum')->group(function () {
         Route::get('/', [ProductPhotoController::class, 'index']);
         Route::post('/', [ProductPhotoController::class, 'store']);
         Route::put('gallery', [ProductPhotoController::class, 'updateGallery']);
-        Route::put('{photo}/primary', [ProductPhotoController::class, 'setPrimary']);
-        Route::delete('{photo}', [ProductPhotoController::class, 'destroy']);
+        Route::put('{productPhoto}/primary', [ProductPhotoController::class, 'setPrimary']);
+        Route::delete('{productPhoto}', [ProductPhotoController::class, 'destroy']);
     });
     
     // File upload routes

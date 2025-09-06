@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BrandResource\Pages;
 use App\Filament\Resources\BrandResource\RelationManagers;
+use App\Filament\Resources\BrandResource\RelationManagers\ProductsRelationManager;
 use App\Forms\Components\BrandForm;
 use App\Models\Brand;
 use Filament\Forms;
@@ -32,6 +33,7 @@ class BrandResource extends Resource
         return $form
             ->schema([
                 BrandForm::make(),
+                
             ]);
     }
 
@@ -94,6 +96,7 @@ class BrandResource extends Resource
     {
         return [
             //
+            ProductsRelationManager::class,
         ];
     }
 

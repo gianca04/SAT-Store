@@ -1,46 +1,31 @@
 <?php
 
-namespace App\Filament\Resources;
+namespace App\Filament\Resources\BrandResource\RelationManagers;
 
-use App\Filament\Resources\ProductResource\Pages;
-use App\Filament\Resources\ProductResource\RelationManagers;
-use App\Forms\Components\ProductPhotoManager;
-use App\Forms\Components\ProductPhotoGalery;
 use App\Forms\Components\ProductForm;
-use App\Models\Product;
 use Filament\Forms;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
-use Filament\Resources\Resource;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class ProductResource extends Resource
+class ProductsRelationManager extends RelationManager
 {
+    protected static string $relationship = 'products';
 
-
-    protected static ?string $navigationGroup = 'Catálogos';
-
-    protected static ?string $navigationLabel = 'Productos';
-
-    protected static ?string $model = Product::class;
-
-    protected static ?string $navigationIcon = 'heroicon-o-tag';
-
-    public static function form(Form $form): Form
+    public function form(Form $form): Form
     {
         return $form
             ->schema([
                 ProductForm::make(),
-                // ... otros campos
                 Repeater::make('photos')
                     ->label('Fotografías')
                     ->relationship()
@@ -88,9 +73,10 @@ class ProductResource extends Resource
             ]);
     }
 
-    public static function table(Table $table): Table
+    public function table(Table $table): Table
     {
         return $table
+            ->recordTitleAttribute('name')
             ->columns([
                 Tables\Columns\ImageColumn::make('primaryPhoto.path')
                     ->label('Imagen')
@@ -125,6 +111,9 @@ class ProductResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->headerActions([
+                Tables\Actions\CreateAction::make(),
+            ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('active')
                     ->label('Estado')
@@ -148,22 +137,5 @@ class ProductResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\ListProducts::route('/'),
-            'create' => Pages\CreateProduct::route('/create'),
-            'view' => Pages\ViewProduct::route('/{record}'),
-            'edit' => Pages\EditProduct::route('/{record}/edit'),
-        ];
     }
 }

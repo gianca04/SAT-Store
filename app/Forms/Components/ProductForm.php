@@ -9,6 +9,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Split;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -52,7 +53,7 @@ class ProductForm
                     '2xl' => 2,
                 ]),
 
-                
+
             Section::make('Adicional')
                 ->icon('heroicon-o-photo')->columns([
                     'sm' => 1,
@@ -68,6 +69,16 @@ class ProductForm
                         ->label('¿Activo?'),
                     BrandSelect::make()
                         ->columnSpan(2),
+
+                    Select::make('categories')
+                        ->relationship('categories', 'name')
+                        ->multiple()
+                        ->preload()
+                        ->searchable()
+                        ->label('Categorías'),
+
+
+
                     RichEditor::make('characteristics')
                         ->label('características')
                         ->placeholder('Descripción de las características del producto')
@@ -89,7 +100,7 @@ class ProductForm
                 ])
                 ->columns(2),
 
-            
+
         ])
             ->from('md')
             ->columnSpanFull();
