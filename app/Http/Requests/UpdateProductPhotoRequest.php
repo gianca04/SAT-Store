@@ -22,8 +22,11 @@ class UpdateProductPhotoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_id' => 'required|exists:products,id',
+            'product_id' => 'sometimes|exists:products,id',
+            'path' => 'sometimes|string|max:255',
             'description' => 'nullable|string|max:500',
+            'is_primary' => 'sometimes|boolean',
+            'position' => 'sometimes|integer|min:1',
         ];
     }
 
@@ -33,9 +36,12 @@ class UpdateProductPhotoRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'product_id.required' => 'El producto es obligatorio.',
             'product_id.exists' => 'El producto seleccionado no existe.',
+            'path.max' => 'La ruta de la imagen no puede tener más de 255 caracteres.',
             'description.max' => 'La descripción no puede tener más de 500 caracteres.',
+            'is_primary.boolean' => 'El campo imagen principal debe ser verdadero o falso.',
+            'position.integer' => 'La posición debe ser un número entero.',
+            'position.min' => 'La posición debe ser mayor a 0.',
         ];
     }
 }

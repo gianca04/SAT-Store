@@ -1,6 +1,6 @@
 /**
  * Product Photo Gallery Component
- * Handles image upload, reordering, and primary selection
+ * Handles image upload, reordering, and primary selection using API endpoints
  */
 
 class ProductPhotoGallery {
@@ -10,12 +10,15 @@ class ProductPhotoGallery {
             maxFileSize: 10 * 1024 * 1024, // 10MB
             allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
             maxFiles: 20,
+            productId: null,
+            apiBaseUrl: '/api/admin/products',
             ...options
         };
         
         this.photos = [];
         this.draggedIndex = null;
         this.wire = null;
+        this.uploading = false;
         
         this.init();
     }
@@ -42,15 +45,21 @@ class ProductPhotoGallery {
         }
     }
 
-    loadExistingPhotos() {
-        // Load photos from server or wire component
-        if (this.wire && this.wire.get) {
-            const existingPhotos = this.wire.get(this.statePath) || [];
-            this.photos = existingPhotos.map(photo => ({
-                ...photo,
-                id: photo.id || Date.now() + Math.random()
-            }));
-            this.render();
+    async loadExistingPhotos() {
+        if (!this.options.productId) return;
+
+        try {
+            const response = await fetch(`${this.options.apiBaseUrl}/${this.options.productId}/photos`);
+            const result = await response.json();
+            
+            if (result.success) {
+                this.photos = result.data || [];
+                this.render();
+                this.updateWire();
+            }
+        } catch (error) {
+            console.error('Error loading photos:', error);
+            this.showNotification('Error al cargar las fotos existentes', 'error');
         }
     }
 
@@ -84,84 +93,201 @@ class ProductPhotoGallery {
         this.processFiles(files);
     }
 
-    processFiles(files) {
+    async processFiles(files) {
+        if (this.uploading) {
+            this.showNotification('Ya hay una subida en progreso', 'info');
+            return;
+        }
+
         if (this.photos.length + files.length > this.options.maxFiles) {
             this.showNotification(`Máximo ${this.options.maxFiles} imágenes permitidas`, 'error');
             return;
         }
 
-        files.forEach((file, index) => {
+        const validFiles = files.filter(file => {
             if (file.size > this.options.maxFileSize) {
                 this.showNotification(`El archivo ${file.name} es demasiado grande. Máximo 10MB.`, 'error');
-                return;
+                return false;
             }
 
             if (!this.options.allowedTypes.includes(file.type)) {
                 this.showNotification(`Tipo de archivo no permitido: ${file.type}`, 'error');
-                return;
+                return false;
             }
 
-            this.createPhotoPreview(file, index);
+            return true;
         });
+
+        if (validFiles.length === 0) return;
+
+        // Upload via API
+        await this.uploadPhotosToAPI(validFiles);
     }
 
-    createPhotoPreview(file, index) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const newPhoto = {
-                id: Date.now() + index,
-                file: file,
-                preview: e.target.result,
-                description: '',
-                is_primary: this.photos.length === 0,
-                position: this.photos.length + 1,
-                isNew: true
-            };
-            
-            this.photos.push(newPhoto);
-            this.render();
-            this.updateWire();
-            this.showNotification('Imagen añadida correctamente', 'success');
-        };
-        
-        reader.onerror = () => {
-            this.showNotification('Error al cargar la imagen', 'error');
-        };
-        
-        reader.readAsDataURL(file);
+    async uploadPhotosToAPI(files) {
+        if (!this.options.productId) {
+            this.showNotification('ID del producto no disponible', 'error');
+            return;
+        }
+
+        this.uploading = true;
+        this.showUploadProgress();
+
+        try {
+            const formData = new FormData();
+            files.forEach((file, index) => {
+                formData.append('photos[]', file);
+                formData.append(`descriptions[${index}]`, '');
+            });
+
+            const response = await fetch(`${this.options.apiBaseUrl}/${this.options.productId}/photos`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Add new photos to the gallery
+                this.photos.push(...result.data);
+                this.render();
+                this.updateWire();
+                this.showNotification(result.message, 'success');
+            } else {
+                throw new Error(result.message || 'Error al subir las fotos');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            this.showNotification('Error al subir las fotos: ' + error.message, 'error');
+        } finally {
+            this.uploading = false;
+            this.hideUploadProgress();
+        }
     }
 
-    setPrimary(index) {
-        this.photos.forEach((photo, i) => {
-            photo.is_primary = i === index;
-        });
-        this.render();
-        this.updateWire();
-        this.showNotification('Imagen principal actualizada', 'success');
+    async setPrimary(index) {
+        const photo = this.photos[index];
+        if (!photo || !this.options.productId) return;
+
+        try {
+            const response = await fetch(`${this.options.apiBaseUrl}/${this.options.productId}/photos/${photo.id}/primary`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Update local state
+                this.photos.forEach((p, i) => {
+                    p.is_primary = i === index;
+                });
+                this.render();
+                this.updateWire();
+                this.showNotification(result.message, 'success');
+            } else {
+                throw new Error(result.message || 'Error al establecer foto principal');
+            }
+        } catch (error) {
+            console.error('Set primary error:', error);
+            this.showNotification('Error al establecer foto principal: ' + error.message, 'error');
+        }
     }
 
-    removePhoto(index) {
+    async removePhoto(index) {
         if (!confirm('¿Estás seguro de que quieres eliminar esta foto?')) {
             return;
         }
 
-        const removedPhoto = this.photos.splice(index, 1)[0];
-        
-        // If removed photo was primary, set first photo as primary
-        if (removedPhoto.is_primary && this.photos.length > 0) {
-            this.photos[0].is_primary = true;
+        const photo = this.photos[index];
+        if (!photo || !this.options.productId) return;
+
+        try {
+            const response = await fetch(`${this.options.apiBaseUrl}/${this.options.productId}/photos/${photo.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Remove from local state
+                this.photos.splice(index, 1);
+                
+                // If there's a new primary photo, update it
+                if (result.data.new_primary) {
+                    const newPrimaryIndex = this.photos.findIndex(p => p.id === result.data.new_primary.id);
+                    if (newPrimaryIndex !== -1) {
+                        this.photos[newPrimaryIndex].is_primary = true;
+                    }
+                }
+                
+                this.updatePositions();
+                this.render();
+                this.updateWire();
+                this.showNotification(result.message, 'info');
+            } else {
+                throw new Error(result.message || 'Error al eliminar la foto');
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            this.showNotification('Error al eliminar la foto: ' + error.message, 'error');
         }
-        
-        this.updatePositions();
-        this.render();
-        this.updateWire();
-        this.showNotification('Imagen eliminada', 'info');
     }
 
-    updateDescription(index, description) {
-        if (this.photos[index]) {
-            this.photos[index].description = description;
-            this.updateWire();
+    async updateDescription(index, description) {
+        const photo = this.photos[index];
+        if (!photo) return;
+
+        photo.description = description;
+        
+        // Debounce API call
+        clearTimeout(this.descriptionTimeout);
+        this.descriptionTimeout = setTimeout(() => {
+            this.syncGalleryState();
+        }, 1000);
+    }
+
+    async syncGalleryState() {
+        if (!this.options.productId || this.photos.length === 0) return;
+
+        try {
+            const response = await fetch(`${this.options.apiBaseUrl}/${this.options.productId}/photos/gallery`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    photos: this.photos.map((photo, index) => ({
+                        id: photo.id,
+                        position: index + 1,
+                        is_primary: photo.is_primary,
+                        description: photo.description || ''
+                    }))
+                })
+            });
+
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.message || 'Error al sincronizar la galería');
+            }
+        } catch (error) {
+            console.error('Sync error:', error);
+            this.showNotification('Error al sincronizar la galería', 'error');
         }
     }
 
@@ -202,6 +328,7 @@ class ProductPhotoGallery {
         this.updatePositions();
         this.render();
         this.updateWire();
+        this.syncGalleryState();
         this.showNotification('Orden actualizado', 'success');
     }
 
@@ -218,24 +345,53 @@ class ProductPhotoGallery {
         });
     }
 
+    showUploadProgress() {
+        const uploadZone = this.container.querySelector('.upload-zone');
+        if (uploadZone) {
+            uploadZone.classList.add('uploading');
+            uploadZone.innerHTML = `
+                <div class="upload-progress">
+                    <div class="spinner"></div>
+                    <p>Subiendo imágenes...</p>
+                </div>
+            `;
+        }
+    }
+
+    hideUploadProgress() {
+        const uploadZone = this.container.querySelector('.upload-zone');
+        if (uploadZone) {
+            uploadZone.classList.remove('uploading');
+            uploadZone.innerHTML = `
+                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <p class="upload-text">Click para seleccionar imágenes o arrastra aquí</p>
+                <p class="upload-subtext">PNG, JPG, GIF hasta 10MB</p>
+            `;
+        }
+    }
+
     render() {
         const galleryContainer = this.container.querySelector('.gallery-container');
         const emptyState = this.container.querySelector('.empty-state');
         
         if (this.photos.length === 0) {
-            galleryContainer.style.display = 'none';
-            emptyState.style.display = 'block';
+            if (galleryContainer) galleryContainer.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'block';
             return;
         }
         
-        galleryContainer.style.display = 'grid';
-        emptyState.style.display = 'none';
+        if (galleryContainer) galleryContainer.style.display = 'grid';
+        if (emptyState) emptyState.style.display = 'none';
         
-        galleryContainer.innerHTML = this.photos.map((photo, index) => 
-            this.renderPhotoItem(photo, index)
-        ).join('');
-        
-        this.attachPhotoEventListeners();
+        if (galleryContainer) {
+            galleryContainer.innerHTML = this.photos.map((photo, index) => 
+                this.renderPhotoItem(photo, index)
+            ).join('');
+            
+            this.attachPhotoEventListeners();
+        }
     }
 
     renderPhotoItem(photo, index) {
@@ -312,13 +468,13 @@ class ProductPhotoGallery {
                         case 'removePhoto':
                             this.removePhoto(buttonIndex);
                             break;
-                        case 'updateDescription':
-                            this.updateDescription(buttonIndex, e.target.value);
-                            break;
                     }
                 });
                 
                 if (button.dataset.action === 'updateDescription') {
+                    button.addEventListener('input', (e) => {
+                        this.updateDescription(parseInt(button.dataset.index), e.target.value);
+                    });
                     button.addEventListener('blur', (e) => {
                         this.updateDescription(parseInt(button.dataset.index), e.target.value);
                     });
@@ -336,6 +492,10 @@ class ProductPhotoGallery {
     setWire(wire, statePath) {
         this.wire = wire;
         this.statePath = statePath;
+    }
+
+    setProductId(productId) {
+        this.options.productId = productId;
         this.loadExistingPhotos();
     }
 
@@ -391,11 +551,42 @@ function productPhotoGallery() {
         wire: null,
         draggedIndex: null,
         gallery: null,
+        productId: null,
 
         init(wire) {
             this.wire = wire;
-            this.gallery = new ProductPhotoGallery(this.$el);
-            this.gallery.setWire(wire, '{{ $getStatePath() }}');
+            
+            // Get product ID from the wire component or from data attributes
+            this.productId = this.getProductId();
+            
+            this.gallery = new ProductPhotoGallery(this.$el, {
+                productId: this.productId
+            });
+            this.gallery.setWire(wire, this.getStatePath());
+            
+            // Sync initial state
+            this.photos = this.gallery.getPhotos();
+        },
+
+        getProductId() {
+            // Try to get product ID from various sources
+            if (this.$el.dataset.productId) {
+                return this.$el.dataset.productId;
+            }
+            
+            // Try to extract from URL or other sources
+            const urlParts = window.location.pathname.split('/');
+            const editIndex = urlParts.indexOf('edit');
+            if (editIndex !== -1 && urlParts[editIndex + 1]) {
+                return urlParts[editIndex + 1];
+            }
+            
+            return null;
+        },
+
+        getStatePath() {
+            // This should match the field name in your form
+            return 'photos';
         },
 
         // Delegate methods to gallery instance
@@ -419,6 +610,14 @@ function productPhotoGallery() {
             if (field === 'description') {
                 this.gallery.updateDescription(index, value);
             }
+        },
+
+        dragStart(event, index) {
+            this.gallery.startDrag(event, index);
+        },
+
+        drop(event, index) {
+            this.gallery.dropPhoto(event, index);
         }
     };
 }

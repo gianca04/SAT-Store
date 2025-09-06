@@ -20,6 +20,8 @@ class ProductPhotoResource extends JsonResource
             'path' => $this->path,
             'image_url' => $this->image_url,
             'description' => $this->description,
+            'is_primary' => $this->is_primary,
+            'position' => $this->position,
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
             'product' => new ProductResource($this->whenLoaded('product')),

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductPhotoController;
 use App\Http\Controllers\Api\PublicController;
 use App\Http\Controllers\Api\FileUploadController;
+use App\Http\Controllers\Api\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +26,27 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 /*
 |--------------------------------------------------------------------------
+| Authentication Routes
+|--------------------------------------------------------------------------
+|
+| These routes are used for authentication (login, register, logout).
+| They don't require authentication except for logout and user info.
+|
+*/
+Route::prefix('auth')->group(function () {
+    Route::post('register', [AuthController::class, 'register']);
+    Route::post('login', [AuthController::class, 'login']);
+    
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('logout', [AuthController::class, 'logout']);
+        Route::post('logout-all', [AuthController::class, 'logoutAll']);
+        Route::get('me', [AuthController::class, 'me']);
+        Route::post('refresh', [AuthController::class, 'refresh']);
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
 | Public API Routes
 |--------------------------------------------------------------------------
 |
@@ -41,6 +63,11 @@ Route::prefix('public')->group(function () {
     // Public products endpoints
     Route::get('products', [PublicController::class, 'products']);
     Route::get('products/{product}', [PublicController::class, 'product']);
+    
+    // Public product photos endpoints
+    Route::get('products/{product}/photos', [PublicController::class, 'productPhotos']);
+    Route::get('products/{product}/photos/primary', [PublicController::class, 'productPrimaryPhoto']);
+    Route::get('product-photos/{productPhoto}', [PublicController::class, 'productPhoto']);
 });
 
 /*
@@ -52,7 +79,7 @@ Route::prefix('public')->group(function () {
 | They provide full access to all resources regardless of status.
 |
 */
-Route::prefix('admin')->group(function () {
+Route::prefix('admin')->middleware('auth:sanctum')->group(function () {
     // Brand management
     Route::apiResource('brands', BrandController::class);
     
@@ -61,6 +88,15 @@ Route::prefix('admin')->group(function () {
     
     // Product photo management
     Route::apiResource('product-photos', ProductPhotoController::class);
+    
+    // Photo gallery management
+    Route::prefix('products/{product}/photos')->group(function () {
+        Route::get('/', [ProductPhotoController::class, 'index']);
+        Route::post('/', [ProductPhotoController::class, 'store']);
+        Route::put('gallery', [ProductPhotoController::class, 'updateGallery']);
+        Route::put('{photo}/primary', [ProductPhotoController::class, 'setPrimary']);
+        Route::delete('{photo}', [ProductPhotoController::class, 'destroy']);
+    });
     
     // File upload routes
     Route::post('brands/{brand}/upload-image', [FileUploadController::class, 'uploadBrandImage']);

@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\BrandResource;
 use App\Http\Resources\ProductResource;
+use App\Http\Resources\ProductPhotoResource;
 use App\Models\Brand;
 use App\Models\Product;
+use App\Models\ProductPhoto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -142,6 +144,90 @@ class PublicController extends Controller
                 'per_page' => $products->perPage(),
                 'total' => $products->total(),
             ]
+        ]);
+    }
+
+    /**
+     * Get photos for a specific active product.
+     */
+    public function productPhotos(Product $product): JsonResponse
+    {
+        if (!$product->active) {
+            return response()->json([
+                'message' => 'Producto no disponible.'
+            ], 404);
+        }
+
+        $photos = $product->photos()
+                         ->ordered()
+                         ->get()
+                         ->map(function ($photo) {
+                             return [
+                                 'id' => $photo->id,
+                                 'path' => $photo->path,
+                                 'image_url' => $photo->image_url,
+                                 'description' => $photo->description,
+                                 'is_primary' => $photo->is_primary,
+                                 'position' => $photo->position,
+                             ];
+                         });
+
+        return response()->json([
+            'success' => true,
+            'data' => $photos
+        ]);
+    }
+
+    /**
+     * Get the primary photo for a specific active product.
+     */
+    public function productPrimaryPhoto(Product $product): JsonResponse
+    {
+        if (!$product->active) {
+            return response()->json([
+                'message' => 'Producto no disponible.'
+            ], 404);
+        }
+
+        $primaryPhoto = $product->photos()
+                              ->primary()
+                              ->first();
+
+        if (!$primaryPhoto) {
+            return response()->json([
+                'message' => 'No se encontró foto principal para este producto.'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $primaryPhoto->id,
+                'path' => $primaryPhoto->path,
+                'image_url' => $primaryPhoto->image_url,
+                'description' => $primaryPhoto->description,
+                'is_primary' => $primaryPhoto->is_primary,
+                'position' => $primaryPhoto->position,
+            ]
+        ]);
+    }
+
+    /**
+     * Get a specific product photo (only if the product is active).
+     */
+    public function productPhoto(ProductPhoto $productPhoto): JsonResponse
+    {
+        $productPhoto->load('product');
+
+        if (!$productPhoto->product || !$productPhoto->product->active) {
+            return response()->json([
+                'message' => 'Foto no disponible.'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => new ProductPhotoResource($productPhoto)
         ]);
     }
 }

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Galería de Fotos API</title>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="{{ asset('css/product-photo-gallery.css') }}">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; }
+        .test-container { max-width: 800px; margin: 0 auto; }
+        .test-info { background: #f0f9ff; padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem; }
+        .upload-area { border: 2px dashed #d1d5db; border-radius: 0.5rem; padding: 2rem; text-align: center; margin-bottom: 2rem; }
+        .upload-zone { cursor: pointer; }
+        .gallery-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+        .photo-item { border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; }
+        .image-container { position: relative; height: 150px; overflow: hidden; }
+        .gallery-image { width: 100%; height: 100%; object-fit: cover; }
+        .primary-badge { position: absolute; top: 0.5rem; left: 0.5rem; background: #fbbf24; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; }
+        .overlay-controls { position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.25rem; }
+        .control-btn { padding: 0.25rem; border: none; border-radius: 0.25rem; cursor: pointer; }
+        .primary-btn { background: #fbbf24; color: white; }
+        .delete-btn { background: #ef4444; color: white; }
+        .photo-info { padding: 0.5rem; }
+        .description-input { width: 100%; padding: 0.25rem; border: 1px solid #d1d5db; border-radius: 0.25rem; }
+        .file-input { display: none; }
+        .upload-icon { width: 2rem; height: 2rem; margin: 0 auto 0.5rem; }
+        .spinner { width: 2rem; height: 2rem; border: 3px solid #e5e7eb; border-top: 3px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Prueba de Galería de Fotos con API</h1>
+        
+        <div class="test-info">
+            <h3>Información de Prueba</h3>
+            <p><strong>Usuario:</strong> sistemas@sat-industriales.pe</p>
+            <p><strong>Producto ID:</strong> 1 (hardcodeado para prueba)</p>
+            <p><strong>API Base:</strong> http://192.168.56.1:8000/api</p>
+        </div>
+
+        <!-- Component Test -->
+        <div x-data="productPhotoGallery()" 
+             x-init="init(null)" 
+             class="product-photo-gallery"
+             data-product-id="1">
+            
+            <!-- File Upload Area -->
+            <div class="upload-area" @drop.prevent="handleDrop($event)" @dragover.prevent @dragenter.prevent>
+                <input type="file" multiple accept="image/*" @change="handleFileSelect($event)" class="file-input" x-ref="fileInput">
+                
+                <!-- Normal Upload Zone -->
+                <div class="upload-zone" @click="$refs.fileInput.click()" x-show="!uploadProgress">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <p class="upload-text">Click para seleccionar imágenes o arrastra aquí</p>
+                    <p class="upload-subtext">PNG, JPG, GIF hasta 10MB</p>
+                </div>
+
+                <!-- Upload Progress -->
+                <div class="upload-progress" x-show="uploadProgress">
+                    <div class="spinner"></div>
+                    <p>Subiendo fotos...</p>
+                </div>
+            </div>
+
+            <!-- Photo Gallery -->
+            <div class="gallery-container" x-show="photos.length > 0">
+                <!-- Gallery Header -->
+                <div class="gallery-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0.5rem; background: #f8fafc; border-radius: 0.5rem; grid-column: 1 / -1;">
+                    <h3 style="margin: 0; font-size: 1rem; font-weight: 600;">Galería de Fotos</h3>
+                    <button type="button" 
+                            @click="saveGallery()" 
+                            class="btn btn-primary"
+                            style="padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 0.375rem; font-size: 0.875rem; cursor: pointer;">
+                        Guardar Cambios
+                    </button>
+                </div>
+
+                <template x-for="(photo, index) in photos" :key="photo.id || index">
+                    <div class="photo-item" 
+                         :class="{ 'is-primary': photo.is_primary }"
+                         draggable="true"
+                         @dragstart="dragStart($event, index)"
+                         @dragover.prevent
+                         @drop.prevent="drop($event, index)">
+                        
+                        <!-- Image Container -->
+                        <div class="image-container">
+                            <img :src="photo.preview || photo.image_url" :alt="photo.description || 'Product photo'" class="gallery-image">
+                            
+                            <!-- Primary Badge -->
+                            <div class="primary-badge" x-show="photo.is_primary">
+                                Principal
+                            </div>
+
+                            <!-- Overlay Controls -->
+                            <div class="overlay-controls">
+                                <!-- Set as Primary Button -->
+                                <button type="button" 
+                                        @click="setPrimary(index)"
+                                        :class="{ 'active': photo.is_primary }"
+                                        class="control-btn primary-btn"
+                                        title="Marcar como principal">
+                                    ⭐
+                                </button>
+
+                                <!-- Delete Button -->
+                                <button type="button" 
+                                        @click="removePhoto(index)"
+                                        class="control-btn delete-btn"
+                                        title="Eliminar foto">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Photo Info -->
+                        <div class="photo-info">
+                            <input type="text" 
+                                   x-model="photo.description" 
+                                   @input="updatePhoto(index, 'description', $event.target.value)"
+                                   placeholder="Descripción de la imagen"
+                                   class="description-input">
+                            <div class="position-indicator">Posición: <span x-text="index + 1"></span></div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" x-show="photos.length === 0" style="text-align: center; padding: 2rem; color: #6b7280;">
+                <p class="empty-text">No hay imágenes en la galería</p>
+                <p>Sube algunas imágenes para comenzar</p>
+            </div>
+
+            <!-- Debug Info -->
+            <div style="margin-top: 2rem; padding: 1rem; background: #f3f4f6; border-radius: 0.5rem;">
+                <h4>Debug Info:</h4>
+                <p><strong>Token:</strong> <span x-text="authToken ? 'Autenticado ✓' : 'No autenticado ✗'"></span></p>
+                <p><strong>Producto ID:</strong> <span x-text="productId"></span></p>
+                <p><strong>Fotos cargadas:</strong> <span x-text="photos.length"></span></p>
+                <p><strong>Subiendo:</strong> <span x-text="uploadProgress ? 'Sí' : 'No'"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/product-photo-gallery-api.js"></script>
+</body>
+</html>
